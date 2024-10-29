@@ -1,5 +1,5 @@
 # ParityUtils
-A collection of command line utilities for working with Parity error correction code.
+A collection of command-line utilities for generating parity files to enable data recovery and integrity checks.
 ![thumbnail](./img/thumbnail.png)
 
 And ParityUtils also supports GUI (still under development)
