@@ -49,7 +49,7 @@ Create a parity file from SOURCE files and write to DEST.\n\
 \n\
   -d, --directory=DIR          automatically use all files from a specified directory as input\n\
   -o, --output=FILE            specify the output parity file (e.g., /path/to/output/P.bin)\n\
-  -a, --algorithm=ALGORITHM    specify the parity algorithm (XOR, RAID4, RAID5)\n\
+  -a, --algorithm=ALGORITHM    specify the parity algorithm (xor_encode, seedsolomon_encode ...)\n\
   -f, --force                  overwrite the destination file if it exists\n\
   -n, --no-clobber             do not overwrite an existing file (overrides a previous -f option)\n\
   -v, --verbose                explain what is being done\n\
