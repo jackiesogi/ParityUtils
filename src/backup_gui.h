@@ -5,7 +5,8 @@
 #include "backup.h"  // To access `backup_options`
 
 // Runs the GUI, accepting the backup options from the command line
-bool run_gui(struct backup_options *x);
+bool
+run_gui (struct backup_options *x);
 
 #ifdef USE_GUI
 #define case_GUI_OPTION \

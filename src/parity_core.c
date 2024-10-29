@@ -10,7 +10,7 @@ xor_block (const unsigned char *blocks[],
         size_t num_blocks,
         size_t block_size)
 {
-    memset(output, 0, block_size);
+    memset (output, 0, block_size);
     for (size_t i = 0; i < num_blocks; i++)
     {
         for (size_t j = 0; j < block_size; j++)
@@ -23,16 +23,16 @@ xor_block (const unsigned char *blocks[],
 size_t
 read_block (FILE *file, unsigned char *buffer, size_t block_size)
 {
-    size_t bytes = fread(buffer, 1, block_size, file);
-    fprintf(stderr, "Read %zu bytes from fileno %d\n", bytes, file->_fileno);
+    size_t bytes = fread (buffer, 1, block_size, file);
+    fprintf (stderr, "Read %zu bytes from fileno %d\n", bytes, file->_fileno);
     return bytes;
 }
 
 size_t
 write_block (FILE *file, const unsigned char *buffer, size_t block_size)
 {
-    size_t bytes = fwrite(buffer, 1, block_size, file);
-    fprintf(stderr, "Wrote %zu bytes to fileno %d\n", bytes, file->_fileno);
+    size_t bytes = fwrite (buffer, 1, block_size, file);
+    fprintf (stderr, "Wrote %zu bytes to fileno %d\n", bytes, file->_fileno);
     return bytes;
 }
 

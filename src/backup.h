@@ -30,4 +30,4 @@ new_backup_options (
         int  input_count,
         char *output);
 
-#endif  // BACKUP_
+#endif  // BACKUP_H

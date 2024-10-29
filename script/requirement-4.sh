@@ -1,8 +1,8 @@
 #!/bin/bash
 
 CWD=$(dirname $BASH_SOURCE)
-SRC="$CWD/../src"
-PATH=$CWD:$SRC:$PATH
+BIN="$CWD/../bin"
+PATH=$CWD:$BIN:$PATH
 
 restore --verbose B.bin C.bin D.bin P.bin --output "A.bin.restored"
 

@@ -13,16 +13,23 @@ struct file_metadata
 };
 
 /* Allocates a new file_metadata struct */
-struct file_metadata * new_file_metadata ();
+struct file_metadata *
+new_file_metadata ();
 
 /* Frees a file_metadata struct */
-void free_file_metadata (struct file_metadata *x);
+void
+free_file_metadata (struct file_metadata *x);
 
-size_t get_fd_size(FILE *file);
-size_t get_fname_size(char *path);
+size_t
+get_fd_size (FILE *file);
 
-time_t get_file_mtime(FILE *file);
+size_t
+get_fname_size (char *path);
 
-void calculate_sha256(FILE *file, unsigned char output[SHA256_DIGEST_LENGTH]);
+time_t
+get_file_mtime (FILE *file);
+
+void
+calculate_sha256 (FILE *file, unsigned char output[SHA256_DIGEST_LENGTH]);
 
 #endif  // METADATA_H

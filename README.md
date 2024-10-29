@@ -36,11 +36,11 @@ ParityUtils/
 ├── Makefile            # Build configuration file
 └── src/                # Source files for the project
     ├── backup.c        # Source code for backup utility
-    ├── backup_gui.c    # Source code for backup GUI utility
+    ├── backup_gui.c    # GTK-3.0 GUI support
     ├── common.c        # Common utility functions
     ├── metadata.c      # Metadata handling functions
-    ├── parity.c        # Parity encoding/decoding functions
-    ├── parity_core.c    # Core parity functions
+    ├── parity.c        # Top level parity encoding/decoding functions
+    ├── parity_core.c   # Core/low level parity functions
     ├── restore.c       # Source code for restore utility
     ├── system.h        # System definitions and headers
     ├── version.c       # Versioning information
@@ -50,7 +50,7 @@ ParityUtils/
     ├── common.h        # Header for common functions
     ├── metadata.h      # Header for metadata functions
     ├── parity.h        # Header for parity functions
-    ├── parity_core.h    # Header for core parity functions
+    ├── parity_core.h   # Header for core parity functions
     └── restore.h       # Header for restore utility
 ```
 
@@ -96,7 +96,7 @@ make clean
 
 ## How to test if the parity file is correct
 ```
-chmod +x ./script
+chmod +x ./script/*
 ./script/requirement-1.sh
 ./script/requirement-2.sh
 ./script/requirement-3.sh

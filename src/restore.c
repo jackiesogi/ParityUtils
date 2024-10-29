@@ -24,7 +24,8 @@
 // #define AUTHORS proper_name ("Shou-Chi Chen")
 #define AUTHORS "Shou-Chi Chen"
 
-void usage(int status)
+void
+usage (int status)
 {
     if (status != EXIT_SUCCESS)
     {
@@ -32,7 +33,7 @@ void usage(int status)
     }
     else
     {
-        printf("\
+        printf ("\
 Usage: %s [OPTION]... SOURCE... -o DEST\n\
 Create a parity file from SOURCE files and write to DEST.\n\
 \n\
@@ -54,7 +55,7 @@ Examples:\n\
 ", program_name, program_name, program_name);
     }
 
-    exit(status);
+    exit (status);
 }
 
 static char const short_options[] = "d:o:a:fnvqDhV";
@@ -74,19 +75,20 @@ static struct option const long_options[] =
 };
 
 void
-new_inputs(struct restore_options *x, size_t n)
+new_inputs (struct restore_options *x, size_t n)
 {
-    x->input = (char **)malloc(n * sizeof(char *));
+    x->input = (char **) malloc (n * sizeof (char *));
     x->input_count = n;
 }
 
-void free_inputs(struct restore_options *x, size_t n)
+void
+free_inputs (struct restore_options *x, size_t n)
 {
     for (size_t i = 0; i < n; ++i)
     {
-        free(x->input[i]);
+        free (x->input[i]);
     }
-    free(x->input);
+    free (x->input);
 }
 
 struct restore_options *
@@ -102,7 +104,7 @@ new_restore_options (
         int  input_count,
         char *output)
 {
-    struct restore_options *x = (struct restore_options *)malloc(sizeof(struct restore_options));
+    struct restore_options *x = (struct restore_options *) malloc (sizeof (struct restore_options));
 
     x->algorithm = algorithm;
     x->directory = directory;
@@ -120,11 +122,11 @@ new_restore_options (
 void
 free_restore_options (struct restore_options *x)
 {
-    free(x->algorithm);
-    free(x->directory);
-    free_inputs(x, x->input_count);
-    free(x->output);
-    free(x);
+    free (x->algorithm);
+    free (x->directory);
+    free_inputs (x, x->input_count);
+    free (x->output);
+    free (x);
 }
 
 int
@@ -134,24 +136,25 @@ restore_internal (struct restore_options *x)
     options.input_files = x->input;
     options.file_count = x->input_count;
     options.output_file = x->output;
-    options.algorithm = strtofptr(x->algorithm);  // Convert algorithm name to function pointer
+    options.algorithm = strtofptr (x->algorithm);  // Convert algorithm name to function pointer
 
     if (!options.algorithm) 
     {
         options.algorithm = DEFAULT_XOR_DECODE;  // Default to XOR encoding
     }
-    options.algorithm(options.input_files, options.file_count, options.output_file);
+    options.algorithm (options.input_files, options.file_count, options.output_file);
 
     return 0;
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
     int optc;
     int ok;
 
     /* Set default values */
-    struct restore_options *x = new_restore_options(NULL, NULL, false, false, false, false, false, NULL, 0, NULL);
+    struct restore_options *x = new_restore_options (NULL, NULL, false, false, false, false, false, NULL, 0, NULL);
 
     // TODO: align these functions with GNU ones
     set_program_name (argv[0]);
@@ -197,18 +200,18 @@ int main (int argc, char **argv)
             case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
 
             default:
-                usage(EXIT_FAILURE);
+                usage (EXIT_FAILURE);
         }
     }
 
     if (optind >= argc)
     {
-        fprintf(stderr, "%s: missing file operand\n", program_name);
-        usage(EXIT_FAILURE);
+        fprintf (stderr, "%s: missing file operand\n", program_name);
+        usage (EXIT_FAILURE);
     }
 
     /* Create a new array with `argc - optind` slots to store the input files */
-    new_inputs(x, argc - optind);
+    new_inputs (x, argc - optind);
 
     /* store the input files ito char **input_files */
     for (int i = optind; i < argc; ++i)
@@ -219,22 +222,22 @@ int main (int argc, char **argv)
     /* Show options when --verbose is set */
     if (x->verbose)
     {
-        printf("Algorithm: %s\n", x->algorithm);
-        printf("Directory: %s\n", x->directory);
-        printf("Output: %s\n", x->output);
-        printf("Force: %s\n", x->force ? "true" : "false");
-        printf("No clobber: %s\n", x->no_clobber ? "true" : "false");
-        printf("Verbose: %s\n", x->verbose ? "true" : "false");
-        printf("Quiet: %s\n", x->quiet ? "true" : "false");
-        printf("Dry run: %s\n", x->dry_run ? "true" : "false");
-        printf("Input files:\n");
+        printf ("Algorithm: %s\n", x->algorithm);
+        printf ("Directory: %s\n", x->directory);
+        printf ("Output: %s\n", x->output);
+        printf ("Force: %s\n", x->force ? "true" : "false");
+        printf ("No clobber: %s\n", x->no_clobber ? "true" : "false");
+        printf ("Verbose: %s\n", x->verbose ? "true" : "false");
+        printf ("Quiet: %s\n", x->quiet ? "true" : "false");
+        printf ("Dry run: %s\n", x->dry_run ? "true" : "false");
+        printf ("Input files:\n");
         for (int i = 0; i < x->input_count; ++i) {
-            printf("  %s\n", x->input[i]);
+            printf ("  %s\n", x->input[i]);
         }
     }
 
     /* Call the internal function to restore the parity file */
-    ok = restore_internal(x);
+    ok = restore_internal (x);
 
     return EXIT_SUCCESS;
 }

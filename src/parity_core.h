@@ -12,10 +12,10 @@ xor_block (const unsigned char *blocks[], unsigned char *output, size_t num_bloc
 
 // Reads a block from a file at the current position
 size_t
-read_block(FILE *file, unsigned char *buffer, size_t block_size);
+read_block (FILE *file, unsigned char *buffer, size_t block_size);
 
 // Writes a block to a file at the current position
 size_t
-write_block(FILE *file, const unsigned char *buffer, size_t block_size);
+write_block (FILE *file, const unsigned char *buffer, size_t block_size);
 
 #endif
