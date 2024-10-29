@@ -29,7 +29,9 @@ The project is structured as follows:
 ```
 ParityUtils/
 ├── lib/                # Future directory for external libraries (currently not used)
+├── bin/                # Pre-built binaries for x86_64 architecture on Linux
 ├── gnulib/             # Future directory for GNU libraries (currently not used)
+├── script/             # Useful shell scripts for testing the features
 ├── README.md           # Project documentation
 ├── Makefile            # Build configuration file
 └── src/                # Source files for the project
@@ -68,7 +70,12 @@ sudo apt install libssl-dev
 sudo apt install libgtk-3-dev libcairo2-dev libadwaita-1-dev
 ```
 
-### Compile
+### Compile the project
+Clone the project from the repository:
+```bash
+git clone https://github.com/jackiesogi/ParityUtils.git
+cd ParityUtils
+```
 To compile the project, use the following commands:
 - To compile the command-line version without GTK GUI:
 ```bash
@@ -87,3 +94,11 @@ make install
 make clean
 ```
 
+## How to test if the parity file is correct
+```
+chmod +x ./script
+./script/requirement-1.sh
+./script/requirement-2.sh
+./script/requirement-3.sh
+./script/requirement-4.sh
+```

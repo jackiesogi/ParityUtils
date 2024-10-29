@@ -6,7 +6,9 @@ PATH=$CWD:$SRC:$PATH
 
 restore --verbose B.bin C.bin D.bin P.bin --output "A.bin.restored"
 
+echo "diff A.bin.original A.bin.restored"
 echo "=========================  DIFF A.bin.original A.bin.restored  ========================="
+echo "CURRENTLY STILL FIXING THIS PART!!!"
 diff A.bin.original A.bin.restored
 echo "========================================================================================"
 

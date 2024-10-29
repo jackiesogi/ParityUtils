@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CWD=$(dirname BASH_SOURCE)
-PRG=$(basename BASH_SOURCE)
+CWD=$(dirname $BASH_SOURCE)
+PRG=$(basename $BASH_SOURCE)
 
 source $CWD/prereq.sh
 
