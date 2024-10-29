@@ -7,19 +7,39 @@
 #include <locale.h>
 #include <libintl.h>
 
-#include "config.h"
+#ifndef USE_COMMON
+#include <config.h>
+#include "system.h"
+#include <version.h>
+#include "progname.h"
+#endif
+
+#ifdef USE_GUI
+#include "backup_gui.h"
+#else
+#define case_GUI_OPTION do {} while (0) // No-op
+#define GUI_HELP ""
+#endif
+
 #include "common.h"
 #include "backup.h"
 #include "parity.h"
 
+/* The official name of this program (e.g., no 'g' prefix).  */
+#define PROGRAM_NAME "backup"
+
+// #define AUTHORS proper_name ("Shou-Chi Chen")
 #define AUTHORS "Shou-Chi Chen"
+
+void print_gui_help() {
+    printf("  -g, --show-gui               use GUI to process the inputs rather than CLI\n");
+}
 
 void usage(int status)
 {
     if (status != EXIT_SUCCESS)
     {
-        // Show help on failure
-        fprintf(stderr, "Try 'backup --help' for more information.\n");
+        emit_try_help ();
     }
     else
     {
@@ -27,29 +47,30 @@ void usage(int status)
 Usage: %s [OPTION]... SOURCE... -o DEST\n\
 Create a parity file from SOURCE files and write to DEST.\n\
 \n\
-Mandatory arguments to long options are mandatory for short options too.\n\
   -d, --directory=DIR          automatically use all files from a specified directory as input\n\
   -o, --output=FILE            specify the output parity file (e.g., /path/to/output/P.bin)\n\
   -a, --algorithm=ALGORITHM    specify the parity algorithm (XOR, RAID4, RAID5)\n\
   -f, --force                  overwrite the destination file if it exists\n\
   -n, --no-clobber             do not overwrite an existing file (overrides a previous -f option)\n\
-      --prompt                 prompt before overwriting the output file\n\
   -v, --verbose                explain what is being done\n\
-  -q, --quiet                  suppress output of informational messages\n\
+  -q, --quiet                  suppress output of informational messages\n", program_name);
+#ifdef USE_GUI
+        print_gui_help();
+#endif
+    printf("\
   -D, --dry-run                show what would be done without making any changes\n\
   -h, --help                   display this help and exit\n\
   -V, --version                output version information and exit\n\
 \n\
 Examples:\n\
   %s A.bin B.bin C.bin D.bin -o /path/to/output/P.bin\n\
-  %s -a /path/to/files -o /path/to/output/P.bin\n\
-", program_name, program_name, program_name);
+", program_name);
     }
 
     exit(status);
 }
 
-static char const short_options[] = "d:o:a:fnvqDhV";
+static char const short_options[] = "d:o:a:fpnvqgDhV";
 
 static struct option const long_options[] =
 {
@@ -59,6 +80,7 @@ static struct option const long_options[] =
     {"no-clobber", no_argument, NULL, 'n'},
     {"verbose", no_argument, NULL, 'v'},
     {"quiet", no_argument, NULL, 'q'},
+    {"show-gui", no_argument, NULL, 'g'},
     {"dry-run", no_argument, NULL, 'D'},
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'V'},
@@ -123,7 +145,24 @@ free_backup_options (struct backup_options *x)
     free(x);
 }
 
-int backup_internal(struct backup_options *x)
+void
+display_backup_options (struct backup_options *x)
+{
+    printf("Algorithm: %s\n", x->algorithm);
+    printf("Directory: %s\n", x->directory);
+    printf("Output: %s\n", x->output);
+    printf("Force: %s\n", x->force ? "true" : "false");
+    printf("No clobber: %s\n", x->no_clobber ? "true" : "false");
+    printf("Verbose: %s\n", x->verbose ? "true" : "false");
+    printf("Quiet: %s\n", x->quiet ? "true" : "false");
+    printf("Dry run: %s\n", x->dry_run ? "true" : "false");
+    printf("Input files:\n");
+    for (int i = 0; i < x->input_count; ++i) {
+        printf("  %s\n", x->input[i]);
+    }
+}
+
+int backup_internal (struct backup_options *x)
 {
     parity_options options;
     options.input_files = x->input;
@@ -137,20 +176,6 @@ int backup_internal(struct backup_options *x)
     }
     options.algorithm(options.input_files, options.file_count, options.output_file);
 
-    if (x->verbose) {
-        printf("Algorithm: %s\n", x->algorithm);
-        printf("Directory: %s\n", x->directory);
-        printf("Output: %s\n", x->output);
-        printf("Force: %s\n", x->force ? "true" : "false");
-        printf("No clobber: %s\n", x->no_clobber ? "true" : "false");
-        printf("Verbose: %s\n", x->verbose ? "true" : "false");
-        printf("Quiet: %s\n", x->quiet ? "true" : "false");
-        printf("Dry run: %s\n", x->dry_run ? "true" : "false");
-        printf("Input files:\n");
-        for (int i = 0; i < x->input_count; ++i) {
-            printf("  %s\n", x->input[i]);
-        }
-    }
 
     return 0;
 }
@@ -165,7 +190,6 @@ int main (int argc, char **argv)
             NULL, false, false, false, false, false, NULL, 0, NULL);
 
     // TODO: align these functions with GNU ones
-    initialize_main (argc, argv);
     set_program_name (argv[0]);
 
     setlocale (LC_ALL, "");
@@ -203,12 +227,15 @@ int main (int argc, char **argv)
             case 'D':
                 x->dry_run = true;
                 break;
-            case 'h':
-                usage(EXIT_SUCCESS);
-            case 'V':
-                printf("%s %s\nCopyright (C) 2024 %s.\n%s",
-                        program_name, "0.1 beta", AUTHORS, DISCLAIMER);
-                exit(EXIT_SUCCESS);
+
+            case_GETOPT_HELP_CHAR;
+
+            case_GETOPT_VERSION_CHAR (PROGRAM_NAME, AUTHORS);
+
+#ifdef USE_GUI
+            case_GUI_OPTION;
+#endif
+            
             default:
                 usage(EXIT_FAILURE);
         }
@@ -226,6 +253,12 @@ int main (int argc, char **argv)
     for (int i = optind; i < argc; ++i)
     {
         x->input[i - optind] = argv[i];
+    }
+
+    /* Show options when --verbose is set */
+    if (x->verbose)
+    {
+        display_backup_options(x);
     }
 
     ok = backup_internal(x);

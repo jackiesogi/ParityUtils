@@ -18,7 +18,7 @@ struct backup_options
 };
 
 struct backup_options *
-initialize_backup_options (
+new_backup_options (
         char *algorithm,
         char *directory,
         bool force,

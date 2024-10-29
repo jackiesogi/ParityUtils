@@ -1,27 +1,49 @@
-# Automake 的 ACLOCAL 標誌，指定 m4 文件的目錄
+# Include the common Makefile.am
 ACLOCAL_AMFLAGS = -I m4
 
-# 遞歸構建子目錄 (gnulib/lib)
+# Subdirectories to build
 SUBDIRS = gnulib/lib
 
-# 指定要編譯的可執行文件
+# Binary Program to build
 bin_PROGRAMS = src/backup src/restore
 
-# 指定 backup 和 restore 的源文件
+# Source files to build
 src_backup_SOURCES = src/backup.c \
 					 src/parity.c \
-                     gnulib/lib/progname.c
+                     lib/progname.c \
+                     lib/propername.c 
 
-src_restore_SOURCES = src/restore.c \
-                      gnulib/lib/progname.c
-
-# Automake 編譯選項，指定 include 頭文件的目錄
+# Automake compiler flags
 AM_CPPFLAGS = -I$(srcdir)/src -I$(srcdir)/gnulib/lib
+AM_CPPFLAGS += -I$(top_builddir)/lib -I$(top_srcdir)/lib
 
-# 包含 gnulib 的文件 (由 gnulib-tool 自動生成)
+# LIBS = $(top_builddir)/lib/libgnu.a
+
+# src_backup_LDADD = $(LIBS) $(LIBICONV) $(LIBUNISTRING) $(MBRTOWC_LIB)
+LDADD = \
+  -L./lib -lgnu \
+  $(top_builddir)/lib/libgnu.a \
+  $(HARD_LOCALE_LIB) \
+  $(LIBPMULTITHREAD) \
+  $(LIBPTHREAD) \
+  $(LIBTHREAD) \
+  $(LIBC32CONV) \
+  $(LIBICONV) \
+  $(LIBINTL) \
+  $(LIBUNISTRING) \
+  $(MBRTOWC_LIB) \
+  $(SETLOCALE_LIB) \
+  $(SETLOCALE_NULL_LIB) \
+  @INTL_MACOSX_LIBS@
+
+# src_restore_LDADD = $(LIBS)
+
+# src_restore_SOURCES = src/restore.c \
+#                       gnulib/lib/progname.c
+
 EXTRA_DIST = m4/gnulib-cache.m4
 
-# 指定 gnulib 的構建步驟
 dist-hook:
 	cd gnulib && $(MAKE) dist-hook
+
 

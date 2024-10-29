@@ -3,11 +3,6 @@
 
 char *program_name = NULL;
 
-void initialize_main (int argc, char **argv)
-{
-
-}
-
 /* strip the program name from the actual path */
 void set_program_name (char *argv)
 {
