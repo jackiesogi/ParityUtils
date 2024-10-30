@@ -1,6 +1,7 @@
 #ifndef METADATA_H
 #define METADATA_H
 #include <stdio.h>
+#include <time.h>
 
 #define SHA256_DIGEST_LENGTH 32
 

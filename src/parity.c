@@ -94,7 +94,7 @@ write_parfile_header (FILE *fp, char **input_files, int file_count)
 
     /* Write the header and metadata table to the parity file */
     fprintf (fp, "<parfile s=%d>!", file_count);
-    fprintf (stdout, "Writing tag: <parfile s=%d>!", file_count);
+    fprintf (stdout, "Writing tag: <parfile s=%d>!\n", file_count);
     for (int i = 0; i < file_count; ++i) 
     {
         fprintf (fp, "%zu!", parfile_header[i]->size);
@@ -130,6 +130,7 @@ read_parfile_header (FILE *fp, struct file_metadata **parfile_header, int file_c
     }
 }
 
+/* Currently only check if the first 11 bytes contains parity file tag */
 bool
 is_valid_parfile (char *path) 
 {
@@ -148,34 +149,38 @@ is_valid_parfile (char *path)
         return false;
     }
 
+    return true;
+    /* TODO: Implement a thorough check on parity file validity */
+  
     /* Reset the file pointer to the beginning */
-    fseek (fp, 0, SEEK_SET);
-    size_t file_count;
-    if  (fscanf (fp, "<parfile s=%zu>!", &file_count) != 1) 
-    {
-        fclose (fp);
-        return false;
-    }
+    /* fseek (fp, 0, SEEK_SET); */
+    /* size_t file_count; */
+    /* if  (fscanf (fp, "<parfile s=%zu>!", &file_count) != 1)  */
+    /* { */
+    /*     fclose (fp); */
+    /*     return false; */
+    /* } */
 
-    int delimiter_count = 0;
-    int ch;
-    while ((ch = fgetc (fp)) != EOF) 
-    {
-        if (ch == '!') 
-        {
-            delimiter_count++;
-        }
-    }
+    /* int delimiter_count = 0; */
+    /* int ch; */
+    /* while ((ch = fgetc (fp)) != EOF)  */
+    /* { */
+    /*     if (ch == '!')  */
+    /*     { */
+    /*         delimiter_count++; */
+    /*     } */
+    /* } */
 
-    fclose (fp);
+    /* fclose (fp); */
 
-    return (delimiter_count == file_count);
+    /* return (delimiter_count == file_count); */
 }
 
+/* Note: It recieve parity file's path as an argument so it will not affect the 
+ * `_IO_read_ptr` for the future reading operations */
 size_t
 get_missing_file_size (const char *parfile, char **input_files, size_t file_count) 
 {
-    
     size_t total_size = 0;
     FILE *fp = fopen (parfile, "rb");
     if (!fp) 
@@ -201,8 +206,14 @@ get_missing_file_size (const char *parfile, char **input_files, size_t file_coun
         }
     }
 
+    fprintf (stdout, "Missing file size: %zu\n", total_size - file_size);
     return total_size - file_size;
 }
+
+/* TODO: A function that check if the input file number is valid to generate
+ * restored file*/
+/* bool */
+/* is_valid_inputfiles () */
 
 /* Parity algorithm function definitions */
 void
@@ -222,8 +233,9 @@ parity_encode_xor (char **input_files, int file_count, char *output_file)
         fclose(out_fp);
         return;
     }
-
-    // Open input files
+  
+    size_t maxsize = 0;
+    size_t maxind = 0;
     for (int i = 0; i < file_count; ++i) 
     {
         in_fps[i] = fopen (input_files[i], "rb");
@@ -238,30 +250,51 @@ parity_encode_xor (char **input_files, int file_count, char *output_file)
             free (in_fps);
             return;
         }
+        size_t size = get_fd_size (in_fps[i]);
+        if (size > maxsize)
+        {
+            maxsize = size;
+            maxind = i;
+        }
     }
+  
+    /* Write the header into the top of the parity file */
+    write_parfile_header (out_fp, input_files, file_count);
 
     size_t block_size = DEFAULT_BLOCK_SIZE; 
     unsigned char **buffers = (unsigned char **) malloc (file_count * sizeof (unsigned char *));
     for (int i = 0; i < file_count; i++) 
     {
-        buffers[i] = (unsigned char *)malloc (block_size);
+        buffers[i] = (unsigned char *) malloc (block_size);
     }
-    unsigned char *output_buffer = (unsigned char *)malloc (block_size);
+    unsigned char *output_buffer = (unsigned char *) malloc (block_size);
+
+    /* Define a 4096-byte zeroed buffer for padding */
+    unsigned char padding_buffer[4096] = {0};
 
     size_t bytes_read = 0;
-    while ((bytes_read = read_block (in_fps[0], buffers[0], block_size)) > 0) 
+    size_t total_read = 0;
+    while (total_read < maxsize)
     {
-        for (int i = 1; i < file_count; i++) 
+        /* Process each input file, padding with the zeroed buffer if needed */
+        for (int i = 0; i < file_count; i++) 
         {
-            read_block (in_fps[i], buffers[i], block_size);
+            bytes_read = read_block (in_fps[i], buffers[i], block_size);
+            if (bytes_read < block_size) 
+            {
+                /* Fill remaining buffer with padding if the file is shorter */
+                memcpy(buffers[i] + bytes_read, padding_buffer, block_size - bytes_read);
+            }
         }
 
-        // Perform XOR operation on the blocks
-        xor_block ((const unsigned char **)buffers, output_buffer, file_count, bytes_read);
-        write_block (out_fp, output_buffer, bytes_read);
+        /* Perform XOR operation on the blocks */
+        xor_block ((const unsigned char **)buffers, output_buffer, file_count, block_size);
+        write_block (out_fp, output_buffer, block_size);
+
+        total_read += block_size;
     }
 
-    // Cleanup
+    /* Cleanup */
     for (int i = 0; i < file_count; i++) 
     {
         fclose (in_fps[i]);
@@ -273,167 +306,37 @@ parity_encode_xor (char **input_files, int file_count, char *output_file)
     free (in_fps);
 }
 
-// void parity_encode_xor(char **input_files, int file_count, char *output_file)
-// {
-//     FILE *out_fp = fopen(output_file, "wb");
-//     if (!out_fp) {
-//         perror("Failed to open output file for writing");
-//         return;
-//     }
-//
-//     FILE **in_fps = (FILE **)malloc(file_count * sizeof(FILE *));
-//     if (!in_fps) {
-//         perror("Failed to allocate file pointers");
-//         fclose(out_fp);
-//         return;
-//     }
-//
-//     for (int i = 0; i < file_count; ++i) {
-//         in_fps[i] = fopen(input_files[i], "rb");
-//         if (!in_fps[i]) {
-//             perror("Failed to open input file");
-//             for (int j = 0; j < i; j++) {
-//                 fclose(in_fps[j]);
-//             }
-//             fclose(out_fp);
-//             free(in_fps);
-//             return;
-//         }
-//     }
-//
-//     write_parfile_header(out_fp, input_files, file_count);
-//
-//     size_t block_size = DEFAULT_BLOCK_SIZE; 
-//     unsigned char **buffers = (unsigned char **)malloc(file_count * sizeof(unsigned char *));
-//     for (int i = 0; i < file_count; i++) {
-//         buffers[i] = (unsigned char *)malloc(block_size);
-//     }
-//     unsigned char *output_buffer = (unsigned char *)malloc(block_size);
-//
-//     size_t bytes_read = 0;
-//     while ((bytes_read = read_block(in_fps[0], buffers[0], block_size)) > 0) {
-//         for (int i = 1; i < file_count; i++) {
-//             read_block(in_fps[i], buffers[i], block_size);
-//         }
-//
-//         xor_block((const unsigned char **)buffers, output_buffer, file_count, bytes_read);
-//         write_block(out_fp, output_buffer, bytes_read);
-//     }
-//
-//     for (int i = 0; i < file_count; i++) {
-//         fclose(in_fps[i]);
-//         free(buffers[i]);
-//     }
-//     fclose(out_fp);
-//     free(buffers);
-//     free(output_buffer);
-//     free(in_fps);
-// }
+void
+jump_parfile_header(FILE *parfile)
+{
+    if (!parfile)
+    {
+        fprintf(stderr, "Invalid parity file pointer\n");
+        return;
+    }
 
-// void parity_decode_xor(char **input_files, int file_count, char *output_file) {
-//     FILE *out_fp = fopen(output_file, "wb");
-//     if (!out_fp) {
-//         perror("Failed to open output file for writing");
-//         return;
-//     }
-//
-//     FILE **in_fps = (FILE **)malloc(file_count * sizeof(FILE *));
-//     if (!in_fps) {
-//         perror("Failed to allocate file pointers");
-//         fclose(out_fp);
-//         return;
-//     }
-//
-//     for (int i = 0; i < file_count; i++) {
-//         in_fps[i] = fopen(input_files[i], "rb");
-//         if (!in_fps[i]) {
-//             perror("Failed to open input file");
-//             for (int j = 0; j < i; j++) {
-//                 fclose(in_fps[j]);
-//             }
-//             fclose(out_fp);
-//             free(in_fps);
-//             return;
-//         }
-//     }
-//
-//     FILE *par_fp = NULL;
-//     for (int i = 0; i < file_count; i++) {
-//         if (is_valid_parfile(input_files[i])) {
-//             par_fp = in_fps[i];
-//             fprintf(stdout, "Parity file found: %s\n", input_files[i]);
-//
-//             fseek(par_fp, 0, SEEK_SET);
-//             int ch;
-//             while ((ch = fgetc(par_fp)) != EOF) {
-//                 if (ch == '!') {
-//                     break;
-//                 }
-//             }
-//             if (ch == EOF) {
-//                 fprintf(stderr, "Failed to find end of header in parity file\n");
-//                 for (int j = 0; j < file_count; j++) {
-//                     fclose(in_fps[j]);
-//                 }
-//                 fclose(out_fp);
-//                 free(in_fps);
-//                 return;
-//             }
-//
-//             while ((ch = fgetc(par_fp)) != EOF && ch != '\n') {
-//                 if (ch == '!') {
-//                     break;
-//                 }
-//             }
-//             if (ch == EOF) {
-//                 fprintf(stderr, "Failed to find end of metadata in parity file\n");
-//                 for (int j = 0; j < file_count; j++) {
-//                     fclose(in_fps[j]);
-//                 }
-//                 fclose(out_fp);
-//                 free(in_fps);
-//                 return;
-//             }
-//             break;
-//         }
-//     }
-//
-//     size_t block_size = DEFAULT_BLOCK_SIZE;
-//     unsigned char **buffers = (unsigned char **)malloc(file_count * sizeof(unsigned char *));
-//     for (int i = 0; i < file_count; i++) {
-//         buffers[i] = (unsigned char *)malloc(block_size);
-//     }
-//     unsigned char *output_buffer = (unsigned char *)malloc(block_size);
-//
-//     size_t bytes_read;
-//     size_t bytes_to_write = get_missing_file_size(input_files[0], input_files, file_count);
-//     fprintf(stdout, "Missing file size: %zu\n", bytes_to_write);
-//     size_t total_written = 0;
-//
-//     while (total_written < bytes_to_write && (bytes_read = read_block(in_fps[0], buffers[0], block_size)) > 0) {
-//         for (int i = 1; i < file_count; i++) {
-//             read_block(in_fps[i], buffers[i], block_size);
-//         }
-//
-//         if (total_written + bytes_read > bytes_to_write) {
-//             bytes_read = bytes_to_write - total_written;
-//         }
-//
-//         xor_block((const unsigned char **)buffers, output_buffer, file_count, bytes_read);
-//         write_block(out_fp, output_buffer, bytes_read);
-//
-//         total_written += bytes_read;
-//     }
-//
-//     for (int i = 0; i < file_count; i++) {
-//         fclose(in_fps[i]);
-//         free(buffers[i]);
-//     }
-//     fclose(out_fp);
-//     free(buffers);
-//     free(output_buffer);
-//     free(in_fps);
-// }
+    /* Move the pointer to the beginning of the file */
+    fseek(parfile, 0, SEEK_SET);
+
+    /* Skip the initial tag "<parfile s=X>!" */
+    int file_count;
+    if (fscanf(parfile, "<parfile s=%d>!", &file_count) != 1)
+    {
+        fprintf(stderr, "Failed to read the file count from parity file header\n");
+        return;
+    }
+
+    /* Skip each file size value in the metadata section */
+    size_t size;
+    for (int i = 0; i < file_count; i++)
+    {
+        if (fscanf(parfile, "%zu!", &size) != 1)
+        {
+            fprintf(stderr, "Failed to read file size from parity file header\n");
+            return;
+        }
+    }
+}
 
 void
 parity_decode_xor (char **input_files, int file_count, char *output_file) 
@@ -453,6 +356,8 @@ parity_decode_xor (char **input_files, int file_count, char *output_file)
         return;
     }
 
+    char *parfile = NULL;
+    int parind = 0;
     for (int i = 0; i < file_count; i++) 
     {
         in_fps[i] = fopen (input_files[i], "rb");
@@ -467,6 +372,14 @@ parity_decode_xor (char **input_files, int file_count, char *output_file)
             free (in_fps);
             return;
         }
+      
+        /* Find parity file inside input_files */
+        if (is_valid_parfile (input_files[i]))
+        {
+            parfile = input_files[i];
+            parind = i;
+            fprintf (stdout, "input_files parity file: %s", input_files[i]);
+        }
     }
 
     size_t block_size = DEFAULT_BLOCK_SIZE;
@@ -477,19 +390,53 @@ parity_decode_xor (char **input_files, int file_count, char *output_file)
     }
     unsigned char *output_buffer = (unsigned char *) malloc (block_size);
 
-    size_t bytes_read;
+    /* Define a 4096-byte zeroed buffer for padding */
+    unsigned char padding_buffer[4096] = {0};
 
-    while ((bytes_read = read_block (in_fps[0], buffers[0], block_size)) > 0) 
+    /* Get the missing file size */
+    size_t missing_size = get_missing_file_size (parfile, input_files, file_count);
+            
+    /* Calculate the number of rounds that need to write a whole block */
+    size_t round = missing_size / block_size;
+    size_t count = 0;
+    
+/*     fprintf (stdout, "The write operation will take %zu rounds (each round %zu bytes),\n\ */
+/* and in the last round, it will write %zu bytes instead of a whole block.\n", round + 1, block_size, missing_size % block_size); */
+    
+    /* Before reading parity file, jump over the header section */
+    jump_parfile_header (in_fps[parind]); 
+
+    // Main decoding loop
+    while (count <= round) 
     {
-        for (int i = 1; i < file_count; i++) 
+        size_t bytes_read = block_size;
+        if (count == round) 
         {
-            read_block (in_fps[i], buffers[i], block_size);
+            /* If it’s the last round, read only the remaining bytes */
+            bytes_read = missing_size % block_size;
         }
 
+        /* Read blocks for each file or use padding if a file has ended */
+        for (int i = 0; i < file_count; i++) 
+        {
+            size_t read_bytes = read_block (in_fps[i], buffers[i], bytes_read);
+            if (read_bytes < bytes_read) 
+            {
+                /* Fill the remaining part of the buffer with zero padding */
+                memcpy(buffers[i] + read_bytes, padding_buffer, bytes_read - read_bytes);
+            }
+        }
+
+        /* fprintf (stdout, "The bytes_read in round %zu: %zu\n", count + 1, bytes_read);     */
+
+        /* XOR the blocks and write to output */
         xor_block ((const unsigned char **)buffers, output_buffer, file_count, bytes_read);
         write_block (out_fp, output_buffer, bytes_read);
+
+        ++count;
     }
 
+    /* Cleanup */
     for (int i = 0; i < file_count; i++) 
     {
         fclose (in_fps[i]);
@@ -500,22 +447,6 @@ parity_decode_xor (char **input_files, int file_count, char *output_file)
     free (output_buffer);
     free (in_fps);
 }
-
-// void parity_encode_xor(char **input_files, int file_count, char *output_file)
-// {
-//     // XOR encoding implementation
-//     printf("XOR encoding\n");
-//     for (int i = 0; i < file_count; ++i) {
-//         printf("Input file: %s\n", input_files[i]);
-//     }
-//     printf("Output file: %s\n", output_file);
-// }
-//
-// void parity_decode_xor(char **input_files, int file_count, char *output_file)
-// {
-//     // XOR decoding implementation
-//     printf("XOR decoding\n");
-// }
 
 void
 parity_encode_reedsolomon (char **input_files, int file_count, char *output_file)
