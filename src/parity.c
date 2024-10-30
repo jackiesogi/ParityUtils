@@ -94,7 +94,7 @@ write_parfile_header (FILE *fp, char **input_files, int file_count)
 
     /* Write the header and metadata table to the parity file */
     fprintf (fp, "<parfile s=%d>!", file_count);
-    fprintf (stdout, "Writing tag: <parfile s=%d>!\n", file_count);
+    /* fprintf (stdout, "Writing tag: <parfile s=%d>!\n", file_count); */
     for (int i = 0; i < file_count; ++i) 
     {
         fprintf (fp, "%zu!", parfile_header[i]->size);
@@ -206,7 +206,7 @@ get_missing_file_size (const char *parfile, char **input_files, size_t file_coun
         }
     }
 
-    fprintf (stdout, "Missing file size: %zu\n", total_size - file_size);
+    /* fprintf (stdout, "Missing file size: %zu\n", total_size - file_size); */
     return total_size - file_size;
 }
 
@@ -378,7 +378,7 @@ parity_decode_xor (char **input_files, int file_count, char *output_file)
         {
             parfile = input_files[i];
             parind = i;
-            fprintf (stdout, "input_files parity file: %s", input_files[i]);
+            /* fprintf (stdout, "input_files parity file: %s", input_files[i]); */
         }
     }
 
