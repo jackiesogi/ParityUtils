@@ -30,7 +30,7 @@ all: $(TARGETS)
 
 # Build backup with optional GUI support
 $(BIN_DIR)/backup: $(SRC_DIR)/backup.c $(SRC_DIR)/common.c $(SRC_DIR)/metadata.c $(SRC_DIR)/parity.c $(SRC_DIR)/parity_core.c
-	$(CC) $(CFLAGS) -o $@ $^ $(SHA256_LIBS) $(GTK_LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(SHA256_LIBS)
 
 # Build backup with GUI support
 $(BIN_DIR)/backup_gui: $(SRC_DIR)/backup.c $(SRC_DIR)/common.c $(SRC_DIR)/metadata.c $(SRC_DIR)/parity.c $(SRC_DIR)/parity_core.c $(SRC_DIR)/backup_gui.c

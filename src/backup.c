@@ -190,7 +190,6 @@ int
 main (int argc, char **argv)
 {
     int optc;
-    int ok;
 
     /* Set default values */
     struct backup_options *x = new_backup_options(NULL,
@@ -268,7 +267,5 @@ main (int argc, char **argv)
         display_backup_options (x);
     }
 
-    ok = backup_internal (x);
-
-    return EXIT_SUCCESS;
+    return backup_internal (x) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

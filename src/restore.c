@@ -151,7 +151,6 @@ int
 main (int argc, char **argv)
 {
     int optc;
-    int ok;
 
     /* Set default values */
     struct restore_options *x = new_restore_options (NULL, NULL, false, false, false, false, false, NULL, 0, NULL);
@@ -237,7 +236,5 @@ main (int argc, char **argv)
     }
 
     /* Call the internal function to restore the parity file */
-    ok = restore_internal (x);
-
-    return EXIT_SUCCESS;
+    return restore_internal (x) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

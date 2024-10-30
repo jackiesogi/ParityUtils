@@ -235,7 +235,7 @@ parity_encode_xor (char **input_files, int file_count, char *output_file)
     }
   
     size_t maxsize = 0;
-    size_t maxind = 0;
+    /* size_t maxind = 0; */
     for (int i = 0; i < file_count; ++i) 
     {
         in_fps[i] = fopen (input_files[i], "rb");
@@ -254,7 +254,7 @@ parity_encode_xor (char **input_files, int file_count, char *output_file)
         if (size > maxsize)
         {
             maxsize = size;
-            maxind = i;
+            /* maxind = i; */
         }
     }
   
@@ -452,12 +452,22 @@ void
 parity_encode_reedsolomon (char **input_files, int file_count, char *output_file)
 {
     // TODO: Implement Reed-Solomon encoding
-    printf ("Reed-Solomon encoding\n");
+    printf ("Reed-Solomon encoding implementation is still under development\n");
+    
+    if (input_files && file_count && output_file)
+    {
+      
+    }
 }
 
 void
 parity_decode_reedsolomon (char **input_files, int file_count, char *output_file)
 {
     // TODO: Implement Reed-Solomon decoding
-    printf("Reed-Solomon decoding\n");
+    printf("Reed-Solomon decoding implementation is still under development\n");
+  
+    if (input_files && file_count && output_file)
+    {
+      
+    }
 }
