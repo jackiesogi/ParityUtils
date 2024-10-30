@@ -1,4 +1,5 @@
 # ParityUtils
+**註：Demo script 位於 `script/` 中，可以使用 `./script/demo-all.sh` 來完成 requirement 1 到 4 的展示**
 A collection of command-line utilities for generating parity files to enable data recovery and integrity checks.
 ![thumbnail](./img/thumbnail.png)
 
