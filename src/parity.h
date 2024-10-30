@@ -2,6 +2,7 @@
 #define PARITY_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /* Aliases to algorithm names */
 #define  DEFAULT_XOR_ENCODE          parity_encode_xor
@@ -28,7 +29,7 @@ typedef struct parity_map
 typedef struct
 {
     char **input_files;    // List of input files
-    int file_count;        // Number of input files
+    size_t file_count;        // Number of input files
     char *output_file;     // Output parity file path
     parity_fn algorithm;   // Chosen algorithm function pointer
 } parity_options;

@@ -7,6 +7,11 @@
 #include <locale.h>
 #include <libintl.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+
 #ifndef USE_COMMON
 #include <config.h>
 #include "system.h"
@@ -90,9 +95,63 @@ static struct option const long_options[] =
     {NULL, 0, NULL, 0}
 };
 
+/* This function loop through the directory and save all filename and store them 
+ * into input_files and also update file_count. Notice that this function is 
+ * platform specific and only support POSIX system. */
+size_t
+get_files_from_dir (const char *dir, char **input_files)
+{
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+    int count = 0;
+
+    if ((dp = opendir(dir)) == NULL) 
+    {
+        perror("Failed to open directory");
+        return 0;
+    }
+
+    /* Loop over each entry in the directory */
+    while ((entry = readdir(dp)) != NULL) 
+    {
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", dir, entry->d_name);
+
+        if (stat(path, &statbuf) == -1) 
+        {
+            perror("Failed to get file status");
+            continue;
+        }
+
+        // Regular file
+        if (S_ISREG(statbuf.st_mode)) 
+        {
+            input_files[count] = (char *) malloc (strlen (path) + 1);
+            if (input_files[count] == NULL) 
+            {
+                perror("Failed to allocate memory for file path");
+                closedir(dp);
+                return 0;
+            }
+            strcpy(input_files[count], path);
+            count++;
+        }
+    }
+
+    closedir(dp);
+
+    return count;
+}
+
 void
 new_inputs (struct backup_options *x, size_t n)
 {
+    if (x->directory)
+    {
+        x->input_count = get_files_from_dir (x->directory, x->input);
+        return;
+    }
     x->input = (char **) malloc (n * sizeof (char *));
     x->input_count = n;
 }
@@ -170,6 +229,23 @@ display_backup_options (struct backup_options *x)
 int
 backup_internal (struct backup_options *x)
 {
+    /* Check if the output file exists and is non-empty */
+    if (!x->force) 
+    {
+        struct stat st;
+        if (stat(x->output, &st) == 0 && st.st_size > 0) 
+        {
+            printf("File '%s' already exists and is not empty. Overwrite? [y/N]: ", x->output);
+            char response = getchar();
+            if (response != 'y' && response != 'Y') 
+            {
+                printf("Aborted by user.\n");
+                return 1;  // Abort operation
+            }
+            while (getchar() != '\n');
+        }
+    }
+
     parity_options options;
     options.input_files = x->input;
     options.file_count = x->input_count;
@@ -182,7 +258,6 @@ backup_internal (struct backup_options *x)
     }
     options.algorithm (options.input_files, options.file_count, options.output_file);
 
-
     return 0;
 }
 
@@ -193,7 +268,7 @@ main (int argc, char **argv)
 
     /* Set default values */
     struct backup_options *x = new_backup_options(NULL,
-            NULL, false, false, false, false, false, NULL, 0, NULL);
+            NULL, false, true, false, true, false, NULL, 0, NULL);
 
     // TODO: align these functions with GNU ones
     set_program_name (argv[0]);
@@ -228,8 +303,11 @@ main (int argc, char **argv)
                 x->quiet = true;
                 break;
             case 'd':
-                x->directory = optarg;
-                break;
+                fprintf (stderr, "'--directory' option is not stable now, please \
+specify the input files by your own!\n");
+                return EXIT_FAILURE;
+                /* x->directory = optarg; */
+                /* break; */
             case 'D':
                 x->dry_run = true;
                 break;
@@ -247,7 +325,9 @@ main (int argc, char **argv)
         }
     }
 
-    if (optind >= argc)
+    /* If non-option arguments is not enough and -d option is not set
+     * meaning that possibly there is no input files given */
+    if (!x->directory && optind >= argc)
     {
         fprintf (stderr, "%s: missing file operand\n", program_name);
         usage (EXIT_FAILURE);
@@ -255,14 +335,14 @@ main (int argc, char **argv)
 
     new_inputs (x, argc - optind);
 
-    // store the input files ito char **input_files
+    /* store the input files ito char **input_files */
     for (int i = optind; i < argc; ++i)
     {
         x->input[i - optind] = argv[i];
     }
 
     /* Show options when --verbose is set */
-    if (x->verbose)
+    if (x->verbose || !x->quiet)
     {
         display_backup_options (x);
     }

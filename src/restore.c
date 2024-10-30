@@ -7,6 +7,8 @@
 #include <locale.h>
 #include <libintl.h>
 
+#include <sys/stat.h>
+
 #ifndef USE_COMMON
 #include <config.h>
 #include "system.h"
@@ -129,9 +131,44 @@ free_restore_options (struct restore_options *x)
     free (x);
 }
 
+void
+display_restore_options (struct restore_options *x)
+{
+    printf ("Algorithm: %s\n", x->algorithm);
+    printf ("Directory: %s\n", x->directory);
+    printf ("Output: %s\n", x->output);
+    printf ("Force: %s\n", x->force ? "true" : "false");
+    printf ("No clobber: %s\n", x->no_clobber ? "true" : "false");
+    printf ("Verbose: %s\n", x->verbose ? "true" : "false");
+    printf ("Quiet: %s\n", x->quiet ? "true" : "false");
+    printf ("Dry run: %s\n", x->dry_run ? "true" : "false");
+    printf ("Input files:\n");
+    for (int i = 0; i < x->input_count; ++i)
+    {
+        printf ("  %s\n", x->input[i]);
+    }
+}
+
 int
 restore_internal (struct restore_options *x)
 {
+    /* Check if the output file exists and is non-empty */
+    if (!x->force) 
+    {
+        struct stat st;
+        if (stat(x->output, &st) == 0 && st.st_size > 0) 
+        {
+            printf("File '%s' already exists and is not empty. Overwrite? [y/N]: ", x->output);
+            char response = getchar();
+            if (response != 'y' && response != 'Y') 
+            {
+                printf("Aborted by user.\n");
+                return 1;  // Abort operation
+            }
+            while (getchar() != '\n');
+        }
+    } 
+
     parity_options options;
     options.input_files = x->input;
     options.file_count = x->input_count;
@@ -153,7 +190,8 @@ main (int argc, char **argv)
     int optc;
 
     /* Set default values */
-    struct restore_options *x = new_restore_options (NULL, NULL, false, false, false, false, false, NULL, 0, NULL);
+    struct restore_options *x = new_restore_options (NULL,
+            NULL, false, true, false, true, false, NULL, 0, NULL);
 
     // TODO: align these functions with GNU ones
     set_program_name (argv[0]);
@@ -188,8 +226,11 @@ main (int argc, char **argv)
                 x->quiet = true;
                 break;
             case 'd':
-                x->directory = optarg;
-                break;
+                fprintf (stderr, "'--directory' option is not stable now, please \
+specify the input files by your own!\n");
+                return EXIT_FAILURE;
+                /* x->directory = optarg; */
+                /* break; */
             case 'D':
                 x->dry_run = true;
                 break;
@@ -219,20 +260,9 @@ main (int argc, char **argv)
     }
 
     /* Show options when --verbose is set */
-    if (x->verbose)
+    if (x->verbose || !x->quiet)
     {
-        printf ("Algorithm: %s\n", x->algorithm);
-        printf ("Directory: %s\n", x->directory);
-        printf ("Output: %s\n", x->output);
-        printf ("Force: %s\n", x->force ? "true" : "false");
-        printf ("No clobber: %s\n", x->no_clobber ? "true" : "false");
-        printf ("Verbose: %s\n", x->verbose ? "true" : "false");
-        printf ("Quiet: %s\n", x->quiet ? "true" : "false");
-        printf ("Dry run: %s\n", x->dry_run ? "true" : "false");
-        printf ("Input files:\n");
-        for (int i = 0; i < x->input_count; ++i) {
-            printf ("  %s\n", x->input[i]);
-        }
+        display_restore_options (x);
     }
 
     /* Call the internal function to restore the parity file */
