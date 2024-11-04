@@ -3,6 +3,8 @@
 #include <openssl/sha.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <dirent.h>
+#include <string.h>
 
 #include "metadata.h"
 
@@ -73,4 +75,106 @@ get_file_mtime (FILE *file)
         return st.st_mtime;
     }
     return 0;
+}
+
+/* This function loop through the directory and save all filename and store them 
+ * into input_files and also update file_count. Notice that this function is 
+ * platform specific and only support POSIX system. */
+void
+get_files_from_dir (char *dir,
+                    char **input_files,
+                    size_t file_count)
+{
+    DIR *dp;
+    char *slash;
+    char *lastchar;
+    struct dirent *entry;
+    struct stat statbuf;
+    size_t count = 0;
+
+    if ((dp = opendir(dir)) == NULL)
+    {
+        perror("Failed to open directory");
+        return;
+    }
+
+    /* Remove trailing slash */  
+    lastchar = dir + (strlen (dir) - 1);
+    slash = strrchr (dir, '/');
+    if (lastchar == slash)
+    {
+        *slash = '\0';
+    }
+
+    /* Loop over each entry in the directory */
+    while ((entry = readdir(dp)) != NULL)
+    {
+        char path[PATH_MAX];
+        snprintf (path, sizeof(path), "%s/%s", dir, entry->d_name);
+
+        if (stat(path, &statbuf) == -1)
+        {
+            perror("Failed to get file status");
+            continue;
+        }
+
+        if (S_ISREG(statbuf.st_mode))
+        {
+            if (count < file_count)
+            {
+                input_files[count] = (char *) malloc (strlen(path) + 1);
+                if (input_files[count] == NULL)
+                {
+                    perror("Failed to allocate memory for file path");
+                    closedir(dp);
+                    return;
+                }
+                strcpy(input_files[count], path);
+                count++;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    closedir(dp);
+}
+
+/* Count the number of files of a directory */
+size_t
+get_filecount_from_dir (const char *dir)
+{
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+    size_t count = 0;
+
+    if ((dp = opendir(dir)) == NULL)
+    {
+        perror("Failed to open directory");
+        return 0;
+    }
+
+    /* Loop over each entry in the directory */
+    while ((entry = readdir(dp)) != NULL)
+    {
+        char path[PATH_MAX];
+        snprintf (path, sizeof(path), "%s/%s", dir, entry->d_name);
+
+        if (stat(path, &statbuf) == -1)
+        {
+            perror("Failed to get file status");
+            continue;
+        }
+
+        if (S_ISREG(statbuf.st_mode))
+        {
+            count++;
+        }
+    }
+
+    closedir(dp);
+    return count;
 }
