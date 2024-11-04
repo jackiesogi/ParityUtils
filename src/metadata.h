@@ -31,6 +31,15 @@ time_t
 get_file_mtime (FILE *file);
 
 void
-calculate_sha256 (FILE *file, unsigned char output[SHA256_DIGEST_LENGTH]);
+calculate_sha256 (FILE *file,
+                  unsigned char output[SHA256_DIGEST_LENGTH]);
+
+void
+get_files_from_dir (char *dir,
+                    char **input_files,
+                    size_t input_count);
+
+size_t
+get_filecount_from_dir (const char *dir);
 
 #endif  // METADATA_H

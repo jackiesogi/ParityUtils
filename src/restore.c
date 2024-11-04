@@ -19,6 +19,7 @@
 #include "common.h"
 #include "restore.h"
 #include "parity.h"
+#include "metadata.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "restore"
@@ -53,8 +54,9 @@ Create a parity file from SOURCE files and write to DEST.\n\
 \n\
 Examples:\n\
   %s A.bin B.bin C.bin Parity.bin -o Restore.bin\n\
-  %s -d /path/to/files -o /path/to/output/Restore.bin\n\
-", program_name, program_name, program_name);
+  %s -d test_dir -o /path/to/output/Restore.bin\n\
+  %s test_dir/* --force --output /path/to/output/Restore.bin\n\
+", program_name, program_name, program_name, program_name);
     }
 
     exit (status);
@@ -188,6 +190,8 @@ int
 main (int argc, char **argv)
 {
     int optc;
+    int ret;
+    size_t filecount;
 
     /* Set default values */
     struct restore_options *x = new_restore_options (NULL,
@@ -226,11 +230,8 @@ main (int argc, char **argv)
                 x->quiet = true;
                 break;
             case 'd':
-                fprintf (stderr, "'--directory' option is not stable now, please \
-specify the input files by your own!\n");
-                return EXIT_FAILURE;
-                /* x->directory = optarg; */
-                /* break; */
+                x->directory = optarg;
+                break;
             case 'D':
                 x->dry_run = true;
                 break;
@@ -244,19 +245,30 @@ specify the input files by your own!\n");
         }
     }
 
-    if (optind >= argc)
+    /* If non-option arguments is not enough and -d option is not set
+     * meaning that possibly there is no input files given */
+    if (!x->directory && optind >= argc)
     {
         fprintf (stderr, "%s: missing file operand\n", program_name);
         usage (EXIT_FAILURE);
     }
 
     /* Create a new array with `argc - optind` slots to store the input files */
-    new_inputs (x, argc - optind);
-
-    /* store the input files ito char **input_files */
-    for (int i = optind; i < argc; ++i)
+    if (x->directory)
     {
-        x->input[i - optind] = argv[i];
+        filecount = get_filecount_from_dir (x->directory);
+        new_inputs (x, filecount);
+        get_files_from_dir (x->directory, x->input, filecount);
+    }
+    else
+    {
+        new_inputs (x, argc - optind);
+
+        /* store the input files ito char **input_files */
+        for (int i = optind; i < argc; ++i)
+        {
+           x->input[i - optind] = argv[i];
+        }
     }
 
     /* Show options when --verbose is set */
@@ -265,6 +277,13 @@ specify the input files by your own!\n");
         display_restore_options (x);
     }
 
-    /* Call the internal function to restore the parity file */
-    return restore_internal (x) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    /* Call the internal function to restore the original file */
+    ret = restore_internal (x);
+
+    if (ret == 0)
+    {
+        printf ("Restored file '%s' is created successfully.\n", x->output);
+    }
+
+    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

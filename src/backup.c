@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <dirent.h>
 
 #ifndef USE_COMMON
 #include <config.h>
@@ -29,6 +28,7 @@
 #include "common.h"
 #include "backup.h"
 #include "parity.h"
+#include "metadata.h"
 
 /* The official name of this program (e.g., no 'g' prefix).  */
 #define PROGRAM_NAME "backup"
@@ -72,7 +72,9 @@ Create a parity file from SOURCE files and write to DEST.\n\
 \n\
 Examples:\n\
   %s A.bin B.bin C.bin D.bin -o /path/to/output/P.bin\n\
-", program_name);
+  %s -d test_dir -o /path/to/output/P.bin\n\
+  %s test_dir/* --force --output /path/to/output/P.bin\n\
+", program_name, program_name, program_name);
     }
 
     exit (status);
@@ -95,63 +97,10 @@ static struct option const long_options[] =
     {NULL, 0, NULL, 0}
 };
 
-/* This function loop through the directory and save all filename and store them 
- * into input_files and also update file_count. Notice that this function is 
- * platform specific and only support POSIX system. */
-size_t
-get_files_from_dir (const char *dir, char **input_files)
-{
-    DIR *dp;
-    struct dirent *entry;
-    struct stat statbuf;
-    int count = 0;
-
-    if ((dp = opendir(dir)) == NULL) 
-    {
-        perror("Failed to open directory");
-        return 0;
-    }
-
-    /* Loop over each entry in the directory */
-    while ((entry = readdir(dp)) != NULL) 
-    {
-        char path[PATH_MAX];
-        snprintf(path, sizeof(path), "%s/%s", dir, entry->d_name);
-
-        if (stat(path, &statbuf) == -1) 
-        {
-            perror("Failed to get file status");
-            continue;
-        }
-
-        // Regular file
-        if (S_ISREG(statbuf.st_mode)) 
-        {
-            input_files[count] = (char *) malloc (strlen (path) + 1);
-            if (input_files[count] == NULL) 
-            {
-                perror("Failed to allocate memory for file path");
-                closedir(dp);
-                return 0;
-            }
-            strcpy(input_files[count], path);
-            count++;
-        }
-    }
-
-    closedir(dp);
-
-    return count;
-}
 
 void
 new_inputs (struct backup_options *x, size_t n)
 {
-    if (x->directory)
-    {
-        x->input_count = get_files_from_dir (x->directory, x->input);
-        return;
-    }
     x->input = (char **) malloc (n * sizeof (char *));
     x->input_count = n;
 }
@@ -185,8 +134,8 @@ new_backup_options (
     // x->input = NULL;
     // x->output = (char *)malloc(CLI_OPTION_DEFAULT_SIZE + 1);
 
-    x->algorithm = algorithm;
-    x->directory = directory;
+    x->algorithm = (algorithm != NULL) ? strdup(algorithm) : NULL;
+    x->directory = (directory != NULL) ? strdup(directory) : NULL;
     x->force = force;
     x->no_clobber = no_clobber;
     x->verbose = verbose;
@@ -194,7 +143,7 @@ new_backup_options (
     x->dry_run = dry_run;
     x->input = input;
     x->input_count = input_count;
-    x->output = output;
+    x->output = (output != NULL) ? strdup(output) : NULL;
     return x;
 }
 
@@ -222,8 +171,9 @@ display_backup_options (struct backup_options *x)
     printf ("Input files:\n");
     for (int i = 0; i < x->input_count; ++i)
     {
-        printf ("  %s\n", x->input[i]);
+        printf ("  %s", x->input[i]);
     }
+    putchar('\n');
 }
 
 int
@@ -265,6 +215,8 @@ int
 main (int argc, char **argv)
 {
     int optc;
+    int ret;
+    size_t filecount;
 
     /* Set default values */
     struct backup_options *x = new_backup_options(NULL,
@@ -303,11 +255,11 @@ main (int argc, char **argv)
                 x->quiet = true;
                 break;
             case 'd':
-                fprintf (stderr, "'--directory' option is not stable now, please \
-specify the input files by your own!\n");
-                return EXIT_FAILURE;
-                /* x->directory = optarg; */
-                /* break; */
+/*                 fprintf (stderr, "'--directory' option is not stable now, please \ */
+/* specify the input files by your own!\n"); */
+/*                 return EXIT_FAILURE; */
+                x->directory = optarg;
+                break;
             case 'D':
                 x->dry_run = true;
                 break;
@@ -333,12 +285,21 @@ specify the input files by your own!\n");
         usage (EXIT_FAILURE);
     }
 
-    new_inputs (x, argc - optind);
-
-    /* store the input files ito char **input_files */
-    for (int i = optind; i < argc; ++i)
+    if (x->directory)
     {
-        x->input[i - optind] = argv[i];
+        filecount = get_filecount_from_dir (x->directory);
+        new_inputs (x, filecount);
+        get_files_from_dir (x->directory, x->input, filecount);
+    }
+    else
+    {
+        new_inputs (x, argc - optind);
+
+        /* store the input files ito char **input_files */
+        for (int i = optind; i < argc; ++i)
+        {
+           x->input[i - optind] = argv[i];
+        }
     }
 
     /* Show options when --verbose is set */
@@ -347,5 +308,13 @@ specify the input files by your own!\n");
         display_backup_options (x);
     }
 
-    return backup_internal (x) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    /* Call the internal function to generate the parity file */
+    ret = backup_internal (x);
+
+    if (ret == 0)
+    {
+        printf ("Parity file '%s' is created successfully.\n", x->output);
+    }
+
+    return ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
