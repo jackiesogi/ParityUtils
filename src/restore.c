@@ -154,6 +154,32 @@ display_restore_options (struct restore_options *x)
 int
 restore_internal (struct restore_options *x)
 {
+    /* Check if there is a lock file */
+    char lock_file[PATH_MAX];
+    snprintf(lock_file, sizeof(lock_file), ".~lock.%s#", x->output);
+
+    /* If the lock file exists, print its content (the pid that lock this file) */
+    if (access(lock_file, F_OK) != -1) 
+    {
+        FILE *file = fopen(lock_file, "r");
+        if (file == NULL) 
+        {
+            perror("Failed to open lock file");
+            return 1;
+        }
+        int pid;
+        fscanf(file, "%d", &pid);
+        fclose(file);
+        printf("File '%s' is currently locked by process %d. Continue? [y/N]: ", x->output, pid);
+        char response = getchar();
+        if (response != 'n' && response != 'N') 
+        {
+            printf("Aborted by user.\n");
+            return 1;
+        }
+        while (getchar() != '\n');
+    }
+
     /* Check if the output file exists and is non-empty */
     if (!x->force) 
     {
@@ -181,7 +207,14 @@ restore_internal (struct restore_options *x)
     {
         options.algorithm = DEFAULT_XOR_DECODE;  // Default to XOR encoding
     }
+
+    /* Create the lock file */
+    create_lock (lock_file);
+
     options.algorithm (options.input_files, options.file_count, options.output_file);
+
+    /* Release the lock file */
+    release_lock (lock_file);
 
     return 0;
 }
