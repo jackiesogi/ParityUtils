@@ -1,6 +1,14 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+/* create file lock on POSIX system */
+int
+create_lock (char *name);
+
+/* release file lock on POSIX system */
+void
+release_lock (char *name);
+
 #ifdef USE_COMMON
 #include <limits.h>
 #define CLI_OPTION_DEFAULT_SIZE 1024
